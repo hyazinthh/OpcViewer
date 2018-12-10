@@ -1,0 +1,105 @@
+﻿.annotations {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.annotations foreignObject {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.annotations .arrowHead {
+    fill: rgb(200, 200, 200);
+}
+
+.annotations .arrowLine {
+    fill: none;
+    stroke: rgb(200, 200, 200);
+}
+
+.annotations .label {
+	position: absolute;
+    border-radius: 8px;
+    background: rgb(200, 200, 200);
+    overflow: hidden;
+    resize: none;
+    transform-origin: top left;
+    opacity: 0.7;
+    z-index: 7;
+    pointer-events: auto;
+}
+
+.annotations .label .grabber {
+	position: absolute;
+	right: 0;
+	width: 5px;
+	height: 100%;
+	background: rgb(180, 180, 180);
+	cursor: ew-resize;
+	display: none;
+}
+
+.annotations .label:hover .grabber {
+	display: block;
+}
+
+.annotations .label textarea {
+    width: 100%;
+    height: 100%;
+    font-family: Verdana, Geneva, sans-serif;
+    font-size: 32px;
+    margin: 1px;
+    padding: 5px;
+    border: none;
+    background: none;
+    resize: none;
+}
+
+.annotations .disabled.label {
+    opacity: 1.0;
+    z-index: auto;
+    pointer-events: none;
+}
+
+.annotations .focused.label {
+    opacity: 1.0;
+    z-index: 10;
+}
+
+.annotations .hovered.label {
+    opacity: 1.0;
+    z-index: 9;
+}
+
+.annotations .top.label {
+    z-index: 8;
+}
+
+.annotations .label .button {
+    position: absolute;
+    padding: 5px !important;
+    margin: 5px;
+    display: none;
+}
+
+.annotations .label:hover .button {
+    display: block;
+    opacity: 0.7;
+}
+
+.annotations .label .button:hover {
+    opacity: 1.0;
+}
+
+.annotations .label .move.button {
+    left: 0;
+    top: 0;
+    cursor: move;
+}
+
+.annotations .label .remove.button {
+    right: 0;
+    top: 0;
+}

@@ -16,7 +16,7 @@ let main argv =
 
     use app = new OpenGlApplication()
     let opcDir = "C:\Users\Martin\Desktop\Projects\OpcViewer\data"
-    let instance =  OpcSelectionViewer.App.app opcDir |> App.start  
+    let instance =  App.app opcDir |> App.start  
     //let instance = OpcOutlineTest.OutlineApp.appOutlines opcDir |> App.start 
 
     // use can use whatever suave server to start you mutable app. 
@@ -29,6 +29,7 @@ let main argv =
     // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)
     WebPart.startServerLocalhost 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance
+        Reflection.assemblyWebPart (System.Reflection.Assembly.GetEntryAssembly())
         Suave.Files.browseHome
     ]  
 

@@ -1,0 +1,14 @@
+﻿.main.menu {
+    margin-bottom: 0px;
+    min-height: 30px !important;
+    height: 30px;
+}
+
+.popup {
+    padding: 0px !important;
+    margin-top: 5px !important;
+}
+
+.popup > .menu {
+	border: none;
+}

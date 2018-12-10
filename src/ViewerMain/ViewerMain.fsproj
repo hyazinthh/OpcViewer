@@ -15,6 +15,22 @@
     <RunWorkingDirectory>$(OutputPath)\netcoreapp2.0</RunWorkingDirectory>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Storyboard.css" />
+    <EmbeddedResource Include="Annotations.css" />
+    <EmbeddedResource Include="Menu.css" />
+    <EmbeddedResource Include="Overlay.css" />
+    <EmbeddedResource Include="Presentation.css" />
+    <EmbeddedResource Include="Provenance.css" />
+    <EmbeddedResource Include="Annotations.js" />
+    <EmbeddedResource Include="Provenance.js" />
+    <EmbeddedResource Include="Storyboard.js" />
+    <Compile Include="PList.fs" />
+    <Compile Include="Tags.fs" />
+    <Compile Include="CameraAnimations.fs" />
+    <Compile Include="ThreadPool.fs" />
+    <Compile Include="ZTree.fs" />
+    <Compile Include="Decision.fs" />
+    <Compile Include="Lens.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Serialization.fs" />
     <Compile Include="KdTrees.fs" />
@@ -24,10 +40,26 @@
     <Compile Include="Picking\IntersectionController.fs" />
     <Compile Include="Picking\Picking.fs" />
     <Compile Include="OutlineModel.fs" />
-    <Compile Include="Model.fs" />
+    <Compile Include="OpcModel.fs" />
+    <Compile Include="AppModel.fs" />
+    <Compile Include="Reduced.fs" />
+    <Compile Include="AnnotationModel.fs" />
+    <Compile Include="AnnotationApp.fs" />
+    <Compile Include="ProvenanceModel.fs" />
+    <Compile Include="ThumbnailModel.fs" />
+    <Compile Include="StoryModel.fs" />
     <Compile Include="Sg.fs" />
     <Compile Include="Opc.fs" />
     <Compile Include="OutlineApp.fs" />
+    <Compile Include="OpcApp.fs" />
+    <Compile Include="ProvenanceApp.fs" />
+    <Compile Include="SessionModel.fs" />
+    <Compile Include="AnimationModel.fs" />
+    <Compile Include="Model.fs" />
+    <Compile Include="AnimationApp.fs" />
+    <Compile Include="SessionApp.fs" />
+    <Compile Include="ThumbnailApp.fs" />
+    <Compile Include="StoryApp.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
