@@ -12,3 +12,7 @@ bin/Debug
 /.fake
 /.paket/paket.exe
 /Aardvark.log
+*.domaincache
+data
+*.g.fs
+/.paket/Paket.Restore.targets
