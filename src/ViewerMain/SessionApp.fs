@@ -7,40 +7,73 @@ open Aardvark.Service
 open Model
 open Session
 open Provenance
+open Story
 
 #nowarn "8989"
 
 [<AutoOpen>]
 module private Helpers =
     open MBrace.FsPickler
+    open OpcSelectionViewer
+    open Aardvark.UI.Primitives
+
+    type SessionAppModel = {
+        camera : Reduced.CameraView
+    }
+
+    type SessionModel = {
+        appModel : SessionAppModel
+        dockConfig : DockConfig
+        provenance : Provenance
+        story : Story
+        renderControlSize : V2i
+        directory : string
+    }
+
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module SessionAppModel =
+    
+        let create (model : AppModel) = {
+            camera = AppModel.getView model
+        }
+
+        let restore (current : AppModel) (model : SessionAppModel) = {
+            current with camera = { current.camera with view = Reduced.CameraView.restore model.camera }
+        }      
+
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module SessionModel =
+
+        let create (model : Model) = {
+            appModel = SessionAppModel.create model.appModel
+            dockConfig = model.dockConfig
+            provenance = model.provenance
+            story = model.story
+            renderControlSize = model.renderControlSize
+            directory = model.directory
+        }
+
+        let restore (current : Model) (model : SessionModel) = {
+            current with appModel = SessionAppModel.restore current.appModel model.appModel
+                         dockConfig = model.dockConfig
+                         provenance = model.provenance
+                         story = model.story
+                         renderControlSize = model.renderControlSize
+                         directory = model.directory
+        }
 
     // XML serializer
     let private xmlSerializer =
-
-        // CameraView contains a lazy field, need a custom pickler
-        let cameraPickler (resolver : IPicklerResolver) =
-            let p = resolver.Resolve<Reduced.CameraView> ()
-
-            let writer (w : WriteState) (ns : CameraView) =
-                p.Write w "view" <| Reduced.CameraView.create ns
-
-            let reader (r : ReadState) =
-                let v = p.Read r "view"
-                Reduced.CameraView.restore v
-
-            Pickler.FromPrimitives (reader, writer)
-
-        let registry = new CustomPicklerRegistry ()
-        do registry.RegisterFactory cameraPickler
-        let cache = PicklerCache.FromCustomPicklerRegistry registry
-    
-        FsPickler.CreateXmlSerializer(picklerResolver = cache)
+        FsPickler.CreateXmlSerializer ()
 
     let pickle (model : Model) =
-        xmlSerializer.PickleToString model
+        xmlSerializer.PickleToString <| SessionModel.create model
 
-    let unpickle (data : string) : Model =
-        xmlSerializer.UnPickleOfString data
+    let unpickle (init : string -> Model) (data : string) : Model =
+        let s : SessionModel = xmlSerializer.UnPickleOfString data
+        let m = init s.directory
+        
+        SessionModel.restore m s
 
 [<AutoOpen>]
 module private Events =
@@ -62,7 +95,7 @@ module private Events =
                     chosen None
         onEvent "onsave" [] cb
 
-let update (msg : SessionAction) (model : Model) =
+let update (msg : SessionAction) (init : string -> Model) (model : Model) =
     match msg with
         | Save (Some file) ->
             Log.startTimed "Saving session to '%s'... " file
@@ -77,7 +110,7 @@ let update (msg : SessionAction) (model : Model) =
         | Load (Some file) ->
             Log.startTimed "Loading session from '%s'... " file
             try
-                let model = file |> File.readAllText |> unpickle
+                let model = file |> File.readAllText |> unpickle init
                 Log.stop ()
                 model
             with

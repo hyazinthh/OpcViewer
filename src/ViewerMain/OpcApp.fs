@@ -90,8 +90,6 @@ let renderingControlsView (m : MOpcViewerModel) =
     ]
 
 let initial dir =
-    Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
-
     let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
 
     let patchHierarchies =

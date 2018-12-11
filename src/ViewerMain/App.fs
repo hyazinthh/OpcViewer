@@ -50,6 +50,7 @@ let initial (dir : string) =
         story = StoryApp.init
         animation = AnimationApp.init model
         renderControlSize = V2i.One
+        directory = dir
     }
 
 let update (model : Model) (act : Action) = 
@@ -77,7 +78,7 @@ let update (model : Model) (act : Action) =
             model |> StoryApp.update a
 
         | SessionAction a ->
-            model |> SessionApp.update a
+            model |> SessionApp.update a initial
 
         | AppAction a when not (Model.isAnimating model) ->
             let s = OpcSelectionViewerApp.update model.appModel a

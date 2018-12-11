@@ -32,6 +32,7 @@ type Model = {
     story : Story
     animation : Animation
     renderControlSize : V2i
+    directory : string
 }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

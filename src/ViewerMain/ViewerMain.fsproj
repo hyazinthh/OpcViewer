@@ -32,8 +32,8 @@
     <Compile Include="Decision.fs" />
     <Compile Include="Lens.fs" />
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Serialization.fs" />
     <Compile Include="KdTrees.fs" />
+    <Compile Include="Serialization.fs" />
     <Compile Include="Shaders.fs" />
     <Compile Include="Picking\Picking-Model.fs" />
     <Compile Include="Picking\Picking-Utils.fs" />
@@ -53,11 +53,11 @@
     <Compile Include="OutlineApp.fs" />
     <Compile Include="OpcApp.fs" />
     <Compile Include="ProvenanceApp.fs" />
-    <Compile Include="SessionModel.fs" />
     <Compile Include="AnimationModel.fs" />
+    <Compile Include="SessionModel.fs" />
     <Compile Include="Model.fs" />
-    <Compile Include="AnimationApp.fs" />
     <Compile Include="SessionApp.fs" />
+    <Compile Include="AnimationApp.fs" />
     <Compile Include="ThumbnailApp.fs" />
     <Compile Include="StoryApp.fs" />
     <Compile Include="App.fs" />

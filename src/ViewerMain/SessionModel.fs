@@ -1,4 +1,4 @@
-﻿module Session
+﻿namespace Session
 
 type SessionAction =
     | Load of string option

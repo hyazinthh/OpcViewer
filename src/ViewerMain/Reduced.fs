@@ -33,7 +33,7 @@ type OState = AppModel
 
 [<DomainType>]
 type State = {
-    picking : PickingModel 
+    pickPoints : V3d plist
 }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -62,9 +62,9 @@ module Message =
 module State =
     
     let create (s : OState) =
-        { picking = s.picking }
+        { pickPoints = s.picking.intersectionPoints }
         
     let restore (current : OState) (s : State) =
-        { current with picking = s.picking }
+        { current with picking = { current.picking with intersectionPoints = s.pickPoints } }
 
-    let picking (s : State) = s.picking
+    let pickPoints (s : State) = s.pickPoints
