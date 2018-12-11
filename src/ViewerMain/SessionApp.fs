@@ -9,10 +9,10 @@ open Session
 open Provenance
 open Story
 
-#nowarn "8989"
-
 [<AutoOpen>]
 module private Helpers =
+    open System
+    open System.IO
     open MBrace.FsPickler
     open OpcSelectionViewer
     open Aardvark.UI.Primitives
@@ -67,7 +67,12 @@ module private Helpers =
         FsPickler.CreateXmlSerializer ()
 
     let pickle (model : Model) =
-        xmlSerializer.PickleToString <| SessionModel.create model
+        let makeRelative (dir : string) =
+            Path.GetRelativePath (Environment.CurrentDirectory, dir)
+
+        model |> Lens.update (Model.Lens.directory) makeRelative
+              |> SessionModel.create
+              |> xmlSerializer.PickleToString
 
     let unpickle (init : string -> Model) (data : string) : Model =
         let s : SessionModel = xmlSerializer.UnPickleOfString data

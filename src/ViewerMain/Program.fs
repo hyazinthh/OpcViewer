@@ -15,7 +15,7 @@ let main argv =
     Aardium.init()
 
     use app = new OpenGlApplication()
-    let opcDir = "C:\Users\Martin\Desktop\Projects\OpcViewer\data"
+    let opcDir = "../../../data"
     let instance =  App.app opcDir |> App.start  
     //let instance = OpcOutlineTest.OutlineApp.appOutlines opcDir |> App.start 
 
