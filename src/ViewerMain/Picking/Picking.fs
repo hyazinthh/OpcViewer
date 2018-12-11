@@ -10,8 +10,14 @@ module PickingApp =
 
   let update (model : PickingModel) (msg : PickingAction) = 
     match msg with
+    | Pick (box, sceneHit) when model.active ->
+      match IntersectionController.intersect model "" sceneHit box with
+        | None -> model
+        | Some p -> { model with intersectionPoints = model.intersectionPoints |> PList.prepend p; hitPointsInfo = HMap.add p box model.hitPointsInfo }
     | HitSurface (box, sceneHit) -> 
-      IntersectionController.intersect model "" sceneHit box
+      match IntersectionController.intersect model "" sceneHit box with
+        | None -> model
+        | Some p -> { model with currentPoint = p }
     | RemoveLastPoint ->
       let points, infos = 
         match model.intersectionPoints.AsList with
@@ -22,7 +28,11 @@ module PickingApp =
       { model with intersectionPoints = points |> PList.ofList; hitPointsInfo = infos }
     | ClearPoints -> 
       { model with intersectionPoints = PList.empty; hitPointsInfo = HMap.empty}
-    //| _ -> model
+    | Enable ->
+      { model with active = true }
+    | Disable ->
+      { model with active = false }
+    | _ -> model
 
   let toV3f (input:V3d) : V3f= input |> V3f
 

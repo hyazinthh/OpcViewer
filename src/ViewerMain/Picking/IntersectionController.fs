@@ -230,15 +230,8 @@ module IntersectionController =
     let opcdata = m.pickingInfos |> HMap.tryFind boxId
     match opcdata with
     | Some kk ->
-
-      let closest = intersectWithOpc (Some kk.kdTree) opc fray
-      
-      match closest with
-        | Some (t,_) -> 
-          let hitpoint = fray.Ray.GetPointOnRay t
-          Log.line "hit surface at %A" hitpoint            
-          { m with intersectionPoints = m.intersectionPoints |> PList.prepend hitpoint; hitPointsInfo = HMap.add hitpoint boxId m.hitPointsInfo }            
-        | None -> m      
-    | None -> m
+      intersectWithOpc (Some kk.kdTree) opc fray
+        |> Option.map (fun (t, _) -> fray.Ray.GetPointOnRay t) 
+    | None -> None
       
   

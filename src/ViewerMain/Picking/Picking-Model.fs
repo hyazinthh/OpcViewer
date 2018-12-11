@@ -8,8 +8,11 @@ open OpcSelectionViewer
 open OpcSelectionViewer.KdTrees
 open Aardvark.SceneGraph.Opc
 
-type PickingAction = 
-  | HitSurface of Box3d*SceneHit    
+type PickingAction =
+  | Enable
+  | Disable
+  | Pick       of Box3d * SceneHit  
+  | HitSurface of Box3d * SceneHit    
   | RemoveLastPoint
   | ClearPoints
 
@@ -32,6 +35,8 @@ type OpcData = {
 
 [<DomainType>]
 type PickingModel = {
+  active               : bool
+  currentPoint         : V3d
   pickingInfos         : hmap<Box3d, OpcData>
   hitPointsInfo        : hmap<V3d, Box3d>
   intersectionPoints   : plist<V3d>  
@@ -41,6 +46,8 @@ module PickingModel =
 
   let initial = 
     {
+      active             = false
+      currentPoint       = V3d.Zero
       pickingInfos       = HMap.empty
       hitPointsInfo      = HMap.empty
       intersectionPoints = PList.empty

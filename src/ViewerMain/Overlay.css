@@ -13,13 +13,13 @@
     width: calc(100% - 64px);
     height: calc(100% - 64px);
     margin: 32px;
-    border: 5px dashed rgb(93, 97, 104);
+    border: 5px dashed rgb(164, 170, 182);
     z-index: 11;
 }
 
 .render.overlay .frame > .icon {
     position: absolute;
-    color: rgb(93, 97, 104);
+    color: rgb(164, 170, 182);
 }
 
 .render.overlay .frame > .camera.icon {
@@ -40,7 +40,7 @@ body:hover .render.overlay .frame > .confirm.buttons:not(.hidden) {
 }
 
 .render.overlay .frame > .confirm.buttons > .icon {
-    color: rgb(93, 97, 104);
+    color: rgb(164, 170, 182);
 }
 
 .render.overlay .frame > .confirm.buttons > .icon:hover {

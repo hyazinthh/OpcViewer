@@ -28,17 +28,17 @@ open Aardvark.Base.DynamicLinkerTypes
   
 let update (model : OpcViewerModel) (msg : OpcViewerAction) =   
     match msg with
-        | Camera m when model.pickingActive = false -> 
+        | Camera m when model.picking.active = false -> 
             { model with camera = FreeFlyController.update model.camera m; }
         | OpcViewerAction.KeyDown m ->
             match m with
-                | Keys.LeftCtrl -> 
-                    { model with pickingActive = true }
+                | Keys.LeftCtrl ->
+                    { model with picking = PickingApp.update model.picking PickingAction.Enable }
                 | _ -> model
         | OpcViewerAction.KeyUp m ->
             match m with
                 | Keys.LeftCtrl -> 
-                    { model with pickingActive = false }
+                    { model with picking = PickingApp.update model.picking PickingAction.Disable }
                 | Keys.Delete ->
                     { model with picking = PickingApp.update model.picking (PickingAction.ClearPoints) }
                 | Keys.Back ->
@@ -133,10 +133,8 @@ let initial dir =
                     
         threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
       
-        pickingActive      = false
         opcInfos           = opcInfos
         picking            = { PickingModel.initial with pickingInfos = opcInfos }
-        sceneHit           = V3d.Zero
     }
 
 let threads (model : OpcViewerModel) =

@@ -27,9 +27,6 @@ type OpcViewerModel =
         opcInfos             : hmap<Box3d, OpcData>
         threads              : ThreadPool<OpcViewerAction>
         picking              : PickingModel
-        pickingActive        : bool
-
-        sceneHit             : V3d
     }
 
    

@@ -183,7 +183,7 @@ function setArrowHeadSize(arrow, s) {
 
 function transformArrow(arrow) {
     var scale = getScale();
-    var lineWidth = 3 * Math.min(scale.X, scale.Y, 1.0); 
+    var lineWidth = 3 * Math.min(scale.X, scale.Y, 1.0);
     
     var pts = []
     pts.push(arrow.data('origin'));

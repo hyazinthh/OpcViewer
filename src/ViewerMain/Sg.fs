@@ -66,12 +66,12 @@ module SceneObjectHandling =
       |> Sg.noEvents      
       |> Sg.withEvents [
           SceneEventKind.Down, (
-            fun sceneHit -> 
-              let intersect = m.pickingActive |> Mod.force
-              if intersect then              
+            fun sceneHit ->
+                true, Seq.ofList[(Pick (boundingBox,sceneHit)) |> PickingAction]
+          )
+          SceneEventKind.Move, (
+            fun sceneHit ->          
                 true, Seq.ofList[(HitSurface (boundingBox,sceneHit)) |> PickingAction]
-              else 
-                false, Seq.ofList[]
           )      
       ]
 

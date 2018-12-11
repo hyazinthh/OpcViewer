@@ -111,7 +111,7 @@ module private Helpers =
         getViewProjTrafo model.renderControlSize (getFrustum model) (getView model)
 
     let getSceneHit (model : MModel) =
-        model.appModel.sceneHit
+        model.appModel.picking.currentPoint
 
  [<AutoOpen>]
  module private Events =

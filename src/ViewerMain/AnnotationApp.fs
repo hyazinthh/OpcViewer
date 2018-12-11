@@ -116,7 +116,7 @@ let view (viewport : IMod<V2i>) (viewProjTrafo : IMod<Trafo3d>) (sceneHit : IMod
         )
 
         let arrowHeadSize = clipPos |> Mod.map (fun cp ->
-            (48.0 / cp.W) |> max 2.0
+            (64.0 / cp.W) |> max 2.0
                           |> min 64.0
         )
 
