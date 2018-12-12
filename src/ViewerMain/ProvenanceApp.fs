@@ -126,18 +126,19 @@ let restore (model : AppModel) (p : Provenance) =
 let update (story : Story) (msg : ProvenanceAction) (p : Provenance) =
     match msg with
         | Update (s, a) ->
-            let state = Reduced.State.create s
-            let msg = Reduced.Message.create a
+            let current = Provenance.state p
+            let next = Reduced.State.create s
+            let msg = Reduced.Message.create current next a
 
             let t =
                 Undecided p.tree
                     |> Rules.checkMessage msg
-                    |> Rules.checkStateChanged state
-                    |> Rules.checkParent state
-                    |> Rules.checkChildren state msg
-                    |> Rules.coalesceWithCurrent story state msg
-                    |> Rules.coalesceWithChild story state msg
-                    |> Rules.appendNew state msg
+                    |> Rules.checkStateChanged next
+                    |> Rules.checkParent next
+                    |> Rules.checkChildren next msg
+                    |> Rules.coalesceWithCurrent story next msg
+                    |> Rules.coalesceWithChild story next msg
+                    |> Rules.appendNew next msg
                     |> Decision.get
 
             { p with tree = t }

@@ -23,18 +23,30 @@ type OMessage = AppAction
 
 [<DomainType>]
 type Message =
+    | AddPoint
+    | RemovePoint
     | Unknown 
 
     override x.ToString () =
         match x with
+            | AddPoint _ -> "A"
+            | RemovePoint _ -> "R"
             | Unknown -> ""
 
 type OState = AppModel
 
-[<DomainType>]
-type State = {
-    pickPoints : V3d plist
-}
+[<DomainType; CustomEquality; NoComparison>]
+type State =
+    { pickPoints : V3d plist }
+
+    override x.GetHashCode () =
+        hash x.pickPoints
+
+    override x.Equals y =
+        match y with
+            | :? State as y -> (PList.toList x.pickPoints) = (PList.toList y.pickPoints)
+            | _ -> false
+
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module CameraView =
@@ -55,8 +67,20 @@ module CameraView =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
     
-    let create : (OMessage -> Message) = function
-        | _ -> Unknown
+    let create (current : State) (next : State) (msg : OMessage) =
+        match msg with
+            | PickingAction (Pick _) ->
+                AddPoint
+            | _ ->
+                let c = PList.count current.pickPoints
+                let n = PList.count next.pickPoints
+
+                if n > c then
+                    AddPoint
+                elif n < c then
+                    RemovePoint
+                else
+                    Unknown
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module State =
