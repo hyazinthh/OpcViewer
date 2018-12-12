@@ -53,14 +53,17 @@ module private Helpers =
             directory = model.directory
         }
 
-        let restore (current : Model) (model : SessionModel) = {
-            current with appModel = SessionAppModel.restore current.appModel model.appModel
-                         dockConfig = model.dockConfig
-                         provenance = model.provenance
-                         story = model.story
-                         renderControlSize = model.renderControlSize
-                         directory = model.directory
-        }
+        let restore (current : Model) (model : SessionModel) =
+            let m = {
+                current with appModel = SessionAppModel.restore current.appModel model.appModel
+                             dockConfig = model.dockConfig
+                             provenance = model.provenance
+                             story = model.story
+                             renderControlSize = model.renderControlSize
+                             directory = model.directory
+            }
+
+            m |> Lens.set Model.Lens.appModel (ProvenanceApp.restore m.appModel m.provenance)
 
     // XML serializer
     let private xmlSerializer =
