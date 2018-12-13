@@ -167,7 +167,7 @@ let view (viewport : IMod<V2i>) (viewProjTrafo : IMod<Trafo3d>) (sceneHit : IMod
         let setPosition = onBootInitial "positionData" a.label.position "setPosition($('#__ID__'), __DATA__)"
 
         let setData =
-            setText >> setWidth >> setPosition
+            setWidth >> setPosition
 
         init (
             setData (
@@ -199,25 +199,27 @@ let view (viewport : IMod<V2i>) (viewProjTrafo : IMod<Trafo3d>) (sceneHit : IMod
                             i [clazz "remove icon"] []
                         ]
 
-                    yield Incremental.textarea (AttributeMap.ofAMap <| amap {
-                        let! id = a.id
+                    yield setText (
+                        Incremental.textarea (AttributeMap.ofAMap <| amap {
+                            let! id = a.id
 
-                        yield attribute "rows" "1"
-                        yield attribute "placeholder" "Add text here..."
-                        yield onChange (fun s -> LabelChanged (id, s))
-                        yield onFocus (fun _ -> Focus id)
+                            yield attribute "rows" "1"
+                            yield attribute "placeholder" "Add text here..."
+                            yield onChange (fun s -> LabelChanged (id, s))
+                            yield onFocus (fun _ -> Focus id)
 
-                        let! targeting = annotations.targeting
+                            let! targeting = annotations.targeting
 
-                        if targeting then
-                            let! p = sceneHit
-                            yield onBlur' (fun _ -> [SaveTarget p; Blur])
-                        else
-                            yield onBlur (fun _ -> Blur)
+                            if targeting then
+                                let! p = sceneHit
+                                yield onBlur' (fun _ -> [SaveTarget p; Blur])
+                            else
+                                yield onBlur (fun _ -> Blur)
 
-                        if disabled then
-                            yield attribute "disabled" ""
-                    }) (Mod.constant "")
+                            if disabled then
+                                yield attribute "disabled" ""
+                        }) a.label.text
+                    )
                 ]
             )
         )

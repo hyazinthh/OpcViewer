@@ -74,13 +74,12 @@ function autosize(elem) {
     }     
 }
 
-// Sets the text of the given label
+// Sets the text of the given label textarea
 function setText(elem, text) {
-    elem.children('textarea')
-        .empty()
+    elem.empty()
         .append(text);
         
-    autosize(elem);
+    autosize(elem.parent());
 }
 
 // Sets the width of the given label

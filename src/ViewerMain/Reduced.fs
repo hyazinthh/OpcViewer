@@ -40,11 +40,11 @@ type State =
     { pickPoints : V3d plist }
 
     override x.GetHashCode () =
-        hash x.pickPoints
+        x.pickPoints |> PList.toList |> hash
 
     override x.Equals y =
         match y with
-            | :? State as y -> (PList.toList x.pickPoints) = (PList.toList y.pickPoints)
+            | :? State as y -> PList.toList x.pickPoints = PList.toList y.pickPoints
             | _ -> false
 
 
