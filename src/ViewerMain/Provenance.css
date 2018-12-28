@@ -43,15 +43,9 @@
     stroke-width: 2px;
 }
 
-.camera.menu {
+.camera.button {
     position: fixed;
     bottom: 10px;
     right: 10px;
-    display: flex;
-    flex-direction: column-reverse;
-}
-
-.camera.menu .button {
-    padding: 7px;
-    margin-top: 5px;
+    padding: 7px !important;
 }

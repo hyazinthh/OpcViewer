@@ -233,25 +233,26 @@ let overlayView (model : MModel) =
         div [clazz "frame"] [
             i [clazz "huge camera icon"] []
 
-            Incremental.div (AttributeMap.ofAMap <| amap {
-                let! hidden = model.story.selected |> Mod.bind (fun s ->
+            Incremental.div (AttributeMap.ofList [
+                clazz "confirm buttons"
+
+            ]) <| alist {
+                let! modified = model.story.selected |> Mod.bind (fun s ->
                     let s = s.Value
-                    Mod.map2 (=) s.current.Current s.modified.Current
+                    Mod.map2 (<>) s.current.Current s.modified.Current
                 )
 
-                yield clazz <| "confirm buttons" + if hidden then " hidden" else ""
-
-            }) <| AList.ofList [
-                i [
+                yield i [
                     clazz "huge checkmark icon"
-                    onClick' (fun _ -> [Commit; DeselectSlide])
+                    onClick' (fun _ -> if modified then [Commit; DeselectSlide] else [DeselectSlide])
                 ] []
 
-                i [
-                    clazz "huge remove icon"
-                    onClick (fun _ -> DeselectSlide)
-                ] []
-            ]
+                if modified then
+                    yield i [
+                        clazz "huge remove icon"
+                        onClick (fun _ -> DeselectSlide)
+                    ] []
+            }
 
             Incremental.div (AttributeMap.ofList [clazz "annotation menu"]) <|
                 alist {

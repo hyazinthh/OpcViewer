@@ -212,22 +212,20 @@ let view (camera : IMod<CameraView>)(s : MStory) (p : MProvenance) =
         ]
 
     let cameraMenu =
-        div [clazz "camera menu"] [
-            Incremental.div (AttributeMap.ofAMap <| amap {
-                let! c = camera
+        Incremental.div (AttributeMap.ofAMap <| amap {
+            let! c = camera
 
-                let! changed = p.Current |> Mod.map (fun p ->
-                    c <> (p |> Provenance.state |> State.camera)
-                )
+            let! modified = p.Current |> Mod.map (fun p ->
+                c <> (p |> Provenance.state |> State.camera)
+            )
 
-                yield clazz <| "ui icon toggle button" + if changed then "" else " disabled"
+            yield clazz <| "ui camera icon toggle button" + if modified then "" else " disabled"
 
-                let! c = camera
-                yield onClick (fun _ -> UpdateCamera c)
+            let! c = camera
+            yield onClick (fun _ -> UpdateCamera c)
 
-            }) <| AList.ofList [
-                i [clazz "camera icon"] []
-            ]
+        }) <| AList.ofList [
+            i [clazz "camera icon"] []
         ]
         
     let provenanceData = adaptive {
