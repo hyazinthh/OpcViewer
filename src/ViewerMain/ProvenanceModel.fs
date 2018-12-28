@@ -4,7 +4,7 @@ open System
 open Aardvark.Base
 open Aardvark.Base.Incremental
 
-open Model
+open Provenance.Reduced
 
 type NodeId = 
     private NodeId of Guid with
@@ -31,19 +31,20 @@ type NodeId =
 type Node = {
     [<PrimaryKey>]
     id : NodeId
-    state : Reduced.State
-    message : Option<Reduced.Message>
+    state : State
+    message : Option<Message>
 }
 
 [<DomainType>]
 type Provenance = {
     tree : ZTree<Node>
     highlight : NodeId option
-    preview : ZTree<Node> option
+    hovered : ZTree<Node> option
 }
 
 type ProvenanceAction =
-    | Update            of AppModel * AppAction
+    | Update            of State * Message
+    | UpdateCamera      of CameraView
     | Goto              of NodeId
     | Undo
     | SetHighlight      of NodeId
@@ -54,7 +55,7 @@ type ProvenanceAction =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Node =
 
-    let create (s : Reduced.State) (m : Reduced.Message option) =
+    let create (s : State) (m : Message option) =
         { id = NodeId.generate ()
           state = s
           message = m }

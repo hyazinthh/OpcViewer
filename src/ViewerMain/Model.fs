@@ -4,13 +4,14 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Application
 open Aardvark.UI.Primitives
-open Aardvark.UI.Animation
 
 open OpcSelectionViewer
 open Provenance
+open Provenance.Reduced
 open Story
-open Animation
 open Session
+open View
+open Animation
 
 type Action =
     | AppAction             of AppAction
@@ -19,7 +20,7 @@ type Action =
     | SessionAction         of SessionAction
     | UpdateConfig          of DockConfig
     | NodeClick             of NodeId
-    | AnimationAction       of AnimationAction
+    | ViewAction            of ViewAction
     | KeyDown               of Keys
     | KeyUp                 of Keys
     | RenderControlResized  of V2i
@@ -27,10 +28,10 @@ type Action =
 [<DomainType>]
 type Model = {
     appModel : AppModel
+    view : View
     dockConfig : DockConfig
     provenance : Provenance
     story : Story
-    animation : Animation
     renderControlSize : V2i
     directory : string
 }
@@ -38,11 +39,11 @@ type Model = {
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module AppModel =
 
-    let setView (view : CameraView) (model : AppModel) =
-        { model with camera = { model.camera with view = view } }
+    let setCamera (camera : CameraView) (model : AppModel) =
+        { model with camera = { model.camera with view = CameraView.restore camera } }
 
-    let getView (model : AppModel) =
-        model.camera.view |> Reduced.CameraView.create
+    let getCamera (model : AppModel) =
+        model.camera.view |> CameraView.create
 
     let setRendering (rendering  : RenderingParams) (model : AppModel) =
         { model with fillMode = rendering.fillMode }
@@ -51,21 +52,27 @@ module AppModel =
         { fillMode = model.fillMode }
 
     let setPresentation (presentation : PresentationParams) (model : AppModel) =
-        model |> setView (presentation.view |> Reduced.CameraView.restore)
-              |> setRendering presentation.rendering
+        model |> setRendering presentation.rendering
 
     let getPresentation (model : AppModel) =
-        { view = model |> getView;
-          rendering = model |> getRendering }
+        { rendering = getRendering model }
+
+    let setViewParams (view : ViewParams) (model : AppModel) =
+        model |> setCamera view.camera
+              |> setPresentation view.presentation
+
+    let getViewParams (model : AppModel) =
+        { camera = model |> getCamera
+          presentation = model |> getPresentation }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Model =
 
-    let setView (view : CameraView) (model : Model) =
-        { model with appModel = model.appModel |> AppModel.setView view }
+    let setCamera (camera : CameraView) (model : Model) =
+        { model with appModel = model.appModel |> AppModel.setCamera camera }
 
-    let getView (model : Model) =
-        model.appModel.camera.view
+    let getCamera (model : Model) =
+        model.appModel |> AppModel.getCamera
 
     let setRendering (rendering  : RenderingParams) (model : Model) =
         { model with appModel = model.appModel |> AppModel.setRendering rendering }
@@ -79,8 +86,14 @@ module Model =
     let getPresentation (model : Model) =
         model.appModel |> AppModel.getPresentation
 
+    let setViewParams (view : ViewParams) (model : Model) =
+        { model with appModel = model.appModel |> AppModel.setViewParams view }
+
+    let getViewParams (model : Model) =
+        model.appModel |> AppModel.getViewParams
+
     let isAnimating (model : Model) =
-        model.animation.model |> AnimationApp.shouldAnimate
+        model.view.animation |> Animation.isAnimating
 
     let isPreview (model : Model) =
-        model.provenance.preview |> Option.isSome
+        model.view.preview |> Option.isSome

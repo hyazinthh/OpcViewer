@@ -9,21 +9,14 @@ open Model
 open Provenance
 open Annotations
 open Thumbnail
-
-// Record containing parameters that influence
-// the rendering of frame slides
-[<DomainType>]
-type PresentationParams = {
-    view : Reduced.CameraView;
-    rendering : RenderingParams;
-}
+open View
 
 // A slide can either contain raw text
 // or a frame referencing an analysis state from the provenance graph
 [<DomainType>]
 type Content =
     | TextContent
-    | FrameContent of Node * PresentationParams * Annotations
+    | FrameContent of Node * ViewParams * Annotations
 
     static member isText = function
         | TextContent _ -> true

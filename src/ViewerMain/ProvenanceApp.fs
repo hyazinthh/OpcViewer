@@ -6,6 +6,7 @@ open Aardvark.UI
 
 open Model
 open Provenance
+open Provenance.Reduced
 open Story
 
 [<AutoOpen>]
@@ -13,15 +14,15 @@ module private Helpers =
 
     module Rules =
 
-        let checkMessage (msg : Reduced.Message) (input : Decision<Node ztree>) =
+        let checkMessage (msg : Message) (input : Decision<Node ztree>) =
             input |> Decision.map (fun tree ->
-                    if msg = Reduced.Unknown then
+                    if msg = Unknown then
                         Decided tree
                     else
                         Undecided tree 
             )
 
-        let checkStateChanged (state : Reduced.State) (input : Decision<Node ztree>) =
+        let checkStateChanged (state : State) (input : Decision<Node ztree>) =
             input |> Decision.map (fun tree ->
                     if tree.Value.state = state then
                         Decided tree
@@ -29,7 +30,7 @@ module private Helpers =
                         Undecided tree 
             )
 
-        let checkParent (state : Reduced.State) (input : Decision<Node ztree>) =
+        let checkParent (state : State) (input : Decision<Node ztree>) =
             input |> Decision.map (fun tree ->
                 match tree.Parent with
                     | Some p when (p.Value.state = state) ->
@@ -38,7 +39,7 @@ module private Helpers =
                         Undecided tree
             ) 
 
-        let checkChildren (state : Reduced.State) (msg : Reduced.Message) (input : Decision<Node ztree>) =
+        let checkChildren (state : State) (msg : Message) (input : Decision<Node ztree>) =
             input |> Decision.map (fun tree ->
                 let c =
                     tree |> ZTree.filterChildren (fun n ->
@@ -53,14 +54,13 @@ module private Helpers =
                     | t::_ -> Decided t
             ) 
 
-        let coalesceWithCurrent (story : Story) (state : Reduced.State) (msg : Reduced.Message) (input : Decision<Node ztree>) =
+        let coalesceWithCurrent (story : Story) (state : State) (msg : Message) (input : Decision<Node ztree>) =
             input |> Decision.map (fun tree ->
                 let node = tree.Value
 
                 let coal = 
                     node |> Node.message
-                         |> Option.map ((=) msg)
-                         |> Option.defaultValue false
+                         |> Option.contains msg
                          |> (&&) (story |> Story.isNodeReferenced node true |> not)
                          |> (&&) (ZTree.isLeaf tree)                
 
@@ -72,7 +72,7 @@ module private Helpers =
                         Undecided tree
             )
 
-        let coalesceWithChild (story : Story)  (state : Reduced.State) (msg : Reduced.Message) (input : Decision<Node ztree>) =
+        let coalesceWithChild (story : Story)  (state : State) (msg : Message) (input : Decision<Node ztree>) =
             input |> Decision.map (fun tree ->
                 let c =
                     tree |> ZTree.filterChildren (fun n ->
@@ -91,7 +91,7 @@ module private Helpers =
                         Decided (t |> ZTree.set v)
             )
 
-        let appendNew (state : Reduced.State) (msg : Reduced.Message) (input : Decision<Node ztree>)=
+        let appendNew (state : State) (msg : Message) (input : Decision<Node ztree>)=
             input |> Decision.map (fun tree ->
                 tree |> ZTree.insert (Node.create state (Some msg)) |> Decided
             )
@@ -110,26 +110,14 @@ module private Helpers =
     let onNodeMouseLeave (cb : unit -> 'msg) =
         onEvent "onnodemouseleave" [] (ignore >> cb)
 
-let init (model : AppModel) =
-    let s = Reduced.State.create model
-
-    { tree = Node.create s None |> ZTree.single
+let init (state : State) =
+    { tree = Node.create state None |> ZTree.single
       highlight = None
-      preview = None }
+      hovered = None }
 
-let restore (model : AppModel) (p : Provenance) =
-    p.preview |> Option.defaultValue p.tree
-              |> ZTree.value
-              |> Node.state
-              |> Reduced.State.restore model
-
-let update (story : Story) (msg : ProvenanceAction) (p : Provenance) =
+let rec update (story : Story) (msg : ProvenanceAction) (p : Provenance) =
     match msg with
-        | Update (s, a) ->
-            let current = Provenance.state p
-            let next = Reduced.State.create s
-            let msg = Reduced.Message.create current next a
-
+        | Update (next, msg) ->
             let t =
                 Undecided p.tree
                     |> Rules.checkMessage msg
@@ -142,6 +130,12 @@ let update (story : Story) (msg : ProvenanceAction) (p : Provenance) =
                     |> Decision.get
 
             { p with tree = t }
+
+        | UpdateCamera c ->
+            let next = { Provenance.state p with camera = c }
+            let msg = Update (next, Camera c)
+
+            p |> update story msg
 
         | Goto id ->
             p.tree |> ZTree.root
@@ -157,10 +151,10 @@ let update (story : Story) (msg : ProvenanceAction) (p : Provenance) =
             let t = p.tree |> ZTree.root
                            |> ZTree.find (fun n -> n.id = id)
 
-            { p with preview = Some t }
+            { p with hovered = Some t }
 
         | MouseLeave ->
-            { p with preview = None }
+            { p with hovered = None }
 
         | SetHighlight id ->
             { p with highlight = Some id }
@@ -168,7 +162,7 @@ let update (story : Story) (msg : ProvenanceAction) (p : Provenance) =
         | RemoveHighlight ->
             { p with highlight = None }
 
-let view (s : MStory) (p : MProvenance) =
+let view (camera : IMod<CameraView>)(s : MStory) (p : MProvenance) =
     let dependencies = [
         { kind = Script; name = "d3"; url = "http://d3js.org/d3.v5.min.js" }
         { kind = Stylesheet; name = "provenanceStyle"; url = "Provenance.css" }
@@ -216,6 +210,25 @@ let view (s : MStory) (p : MProvenance) =
                 attribute "mode" "normal"
             ]
         ]
+
+    let cameraMenu =
+        div [clazz "camera menu"] [
+            Incremental.div (AttributeMap.ofAMap <| amap {
+                let! c = camera
+
+                let! changed = p.Current |> Mod.map (fun p ->
+                    c <> (p |> Provenance.state |> State.camera)
+                )
+
+                yield clazz <| "ui icon toggle button" + if changed then "" else " disabled"
+
+                let! c = camera
+                yield onClick (fun _ -> UpdateCamera c)
+
+            }) <| AList.ofList [
+                i [clazz "camera icon"] []
+            ]
+        ]
         
     let provenanceData = adaptive {
         let! t = p.tree
@@ -244,14 +257,18 @@ let view (s : MStory) (p : MProvenance) =
     ] [
         require dependencies (
             onBootInitial "provenanceData" provenanceData updateChart (
-                Svg.svg [ clazz "rootSvg" ] [
-                    Svg.defs [] [
-                        dropShadow "shadowSelected" colorSelected
-                        dropShadow "shadowHovered" colorHovered
+                div [] [
+                    Svg.svg [ clazz "rootSvg" ] [
+                        Svg.defs [] [
+                            dropShadow "shadowSelected" colorSelected
+                            dropShadow "shadowHovered" colorHovered
+                        ]
+
+                        Svg.g [ clazz "linkLayer" ] []
+                        Svg.g [ clazz "nodeLayer" ] []
                     ]
 
-                    Svg.g [ clazz "linkLayer" ] []
-                    Svg.g [ clazz "nodeLayer" ] []
+                    cameraMenu
                 ]
             )
         )

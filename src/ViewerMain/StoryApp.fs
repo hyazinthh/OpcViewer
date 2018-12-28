@@ -3,13 +3,14 @@
 open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.UI
-open Aardvark.UI.Animation
 
 open Story
 open Model
 open Provenance
+open Provenance.Reduced
 open Annotations
 open Thumbnail
+open View
 
 [<AutoOpen>]
 module private Helpers =
@@ -19,8 +20,8 @@ module private Helpers =
         let update (msg : AnnotationAction) (model : Model) =
 
             let updateContent = function
-                | FrameContent (n, p, a) ->
-                    FrameContent (n, p, a |> AnnotationApp.update msg)
+                | FrameContent (n, v, a) ->
+                    FrameContent (n, v, a |> AnnotationApp.update msg)
                 | x -> x
 
             let sel = model.story |> Story.trySelected
@@ -29,9 +30,9 @@ module private Helpers =
             model |> Lens.set (Model.Lens.story |. Story.Lens.selected) sel
 
     // Creates a new frame
-    let frame (provenance : Provenance) (presentation : PresentationParams) =
+    let frame (provenance : Provenance) (view : ViewParams) =
         { id = SlideId.generate ()
-          content = FrameContent (Provenance.current provenance, presentation, AnnotationApp.init)
+          content = FrameContent (Provenance.current provenance, view, AnnotationApp.init)
           thumbnail = ThumbnailApp.empty }
 
     // Updates the frame content of the selected slide
@@ -40,13 +41,12 @@ module private Helpers =
         let update (s : Selection) =
             match s.modified.content with
                 | TextContent _ -> model
-                | FrameContent (_, p, a) ->
+                | FrameContent (_, _, a) ->
                     let s =
                         let n = Provenance.current model.provenance
-                        let p = if Model.isAnimating model then p else Model.getPresentation model
-                        let cont = FrameContent (n, p, a)
+                        let v = model.view.state
 
-                        s |> Lens.set (Selection.Lens.modified |. Slide.Lens.content) cont
+                        s |> Lens.set (Selection.Lens.modified |. Slide.Lens.content) (FrameContent (n, v, a))
                           |> Some
 
                     model |> Lens.set (Model.Lens.story |. Story.Lens.selected) s
@@ -70,14 +70,14 @@ module private Helpers =
     let restore (animate : bool) (model : Model) =
 
         let restoreContent = function
-            | FrameContent (node, presentation, _) ->
+            | FrameContent (node, view, _) ->
                 let p = model.provenance |> ProvenanceApp.update model.story (Goto node.id)
-                let m = ProvenanceApp.restore model.appModel p
+                let m = State.restore model.appModel <| Provenance.state p
 
                 model |> Lens.set Model.Lens.provenance p
                       |> Lens.set Model.Lens.appModel m
-                      |> Model.setPresentation presentation
-                      |> if animate then AnimationApp.animate 0.5 model else id
+                      |> Model.setViewParams view
+                      |> ViewApp.update (if animate then Move else Set)
             | _ -> 
                 model
 
@@ -88,27 +88,24 @@ module private Helpers =
     let getFrustum (model : MModel) =
         model.appModel.frustum
 
-    let getView (model : MModel) =
-        model.appModel.camera.view
+    let getCamera (model : MModel) =
+        model.view.Current |> Mod.map View.camera
 
-    let getViewFromPresentation (p : MPresentationParams) =
-        p.view.Current |> Mod.map Reduced.CameraView.restore
-
-    let getViewProjTrafo (size : IMod<V2i>) (frustum : IMod<Frustum>) (view : IMod<CameraView>) = 
+    let getViewProjTrafo (size : IMod<V2i>) (frustum : IMod<Frustum>) (camera : IMod<CameraView>) =
         let cfg = RenderControlConfig.standard
 
         adaptive {
             let! s = size
             let! f = frustum
-            let! v = view
+            let! c = camera
 
             return f |> cfg.adjustAspect s
-                     |> Camera.create v
+                     |> Camera.create (CameraView.restore c)
                      |> Camera.viewProjTrafo
         }
         
     let getViewProjTrafoFromModel (model : MModel) =
-        getViewProjTrafo model.renderControlSize (getFrustum model) (getView model)
+        getViewProjTrafo model.renderControlSize (getFrustum model) (getCamera model)
 
     let getSceneHit (model : MModel) =
         model.appModel.picking.currentPoint
@@ -183,7 +180,7 @@ let update (msg : StoryAction) (model : Model) =
             model |> Lens.update Model.Lens.story story
 
         | AddFrameSlide before ->
-            let slide = frame model.provenance (Model.getPresentation model)
+            let slide = frame model.provenance (Model.getViewParams model)
             let add = 
                 match before with
                     | None -> Story.append slide
@@ -418,12 +415,12 @@ let storyboardView (model : MModel) =
 
         let highlighted = adaptive {
             let! cont = slide.content
-            let! preview = model.provenance.preview
+            let! hovered = model.provenance.hovered
 
             match cont with
                 | MFrameContent (n, _, _) ->
                     let! id = n.id
-                    return preview |> Option.map (fun t -> id = t.Value.id)
+                    return hovered |> Option.map (fun t -> id = t.Value.id)
                                    |> Option.defaultValue false
                 | _ ->
                     return false
@@ -457,9 +454,9 @@ let storyboardView (model : MModel) =
                     let! content = slide.content
 
                     match content with
-                        | MFrameContent (_, p, a) ->
+                        | MFrameContent (_, v, a) ->
                             let viewport = slide.thumbnail.displaySize
-                            let vp = getViewProjTrafo viewport (getFrustum model) (getViewFromPresentation p)
+                            let vp = getViewProjTrafo viewport (getFrustum model) v.camera.Current
 
                             let sceneHit = getSceneHit model
 

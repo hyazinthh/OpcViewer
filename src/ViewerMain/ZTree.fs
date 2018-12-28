@@ -209,6 +209,8 @@ module ZTree =
 
     let single value = ZTree<_>.Single value
 
+    let tryValue (tree : ZTree<'a>) = tree.TryValue
+
     let value (tree : ZTree<'a>) = tree.Value
 
     let isRoot (tree : ZTree<'a>) = tree.IsRoot

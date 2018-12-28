@@ -7,6 +7,7 @@ open Aardvark.Service
 open Model
 open Session
 open Provenance
+open Provenance.Reduced
 open Story
 
 [<AutoOpen>]
@@ -18,7 +19,7 @@ module private Helpers =
     open Aardvark.UI.Primitives
 
     type SessionAppModel = {
-        camera : Reduced.CameraView
+        camera : CameraView
     }
 
     type SessionModel = {
@@ -34,11 +35,11 @@ module private Helpers =
     module SessionAppModel =
     
         let create (model : AppModel) = {
-            camera = AppModel.getView model
+            camera = AppModel.getCamera model
         }
 
         let restore (current : AppModel) (model : SessionAppModel) = {
-            current with camera = { current.camera with view = Reduced.CameraView.restore model.camera }
+            current with camera = { current.camera with view = CameraView.restore model.camera }
         }      
 
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -63,7 +64,7 @@ module private Helpers =
                              directory = model.directory
             }
 
-            m |> Lens.set Model.Lens.appModel (ProvenanceApp.restore m.appModel m.provenance)
+            m |> Lens.set Model.Lens.appModel (State.restore m.appModel <| Provenance.state m.provenance)
 
     // XML serializer
     let private xmlSerializer =

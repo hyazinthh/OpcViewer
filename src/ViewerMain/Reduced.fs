@@ -25,28 +25,23 @@ type OMessage = AppAction
 type Message =
     | AddPoint
     | RemovePoint
+    | Camera of CameraView
     | Unknown 
 
     override x.ToString () =
         match x with
-            | AddPoint _ -> "A"
-            | RemovePoint _ -> "R"
+            | AddPoint -> "A"
+            | RemovePoint -> "R"
+            | Camera _ -> "C"
             | Unknown -> ""
 
 type OState = AppModel
 
-[<DomainType; CustomEquality; NoComparison>]
-type State =
-    { pickPoints : V3d plist }
-
-    override x.GetHashCode () =
-        x.pickPoints |> PList.toList |> hash
-
-    override x.Equals y =
-        match y with
-            | :? State as y -> PList.toList x.pickPoints = PList.toList y.pickPoints
-            | _ -> false
-
+[<DomainType>]
+type State = {
+    camera : CameraView
+    pickPoints : V3d list
+}
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module CameraView =
@@ -61,19 +56,14 @@ module CameraView =
     let restore (v : CameraView) =
         OCameraView (v.sky, v.location, v.forward, v.up, v.right)
 
-    let equal (a : OCameraView) (b : OCameraView) =
-        (a |> create) = (b |> create)
-
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
     
     let create (current : State) (next : State) (msg : OMessage) =
         match msg with
-            | PickingAction (Pick _) ->
-                AddPoint
             | _ ->
-                let c = PList.count current.pickPoints
-                let n = PList.count next.pickPoints
+                let c = List.length current.pickPoints
+                let n = List.length next.pickPoints
 
                 if n > c then
                     AddPoint
@@ -85,10 +75,14 @@ module Message =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module State =
     
-    let create (s : OState) =
-        { pickPoints = s.picking.intersectionPoints }
-        
+    let create (camera : CameraView) (s : OState) =
+        { camera = camera
+          pickPoints = PList.toList s.picking.intersectionPoints }
+
     let restore (current : OState) (s : State) =
-        { current with picking = { current.picking with intersectionPoints = s.pickPoints } }
+        { current with camera = { current.camera with view = CameraView.restore s.camera }
+                       picking = { current.picking with intersectionPoints = PList.ofList s.pickPoints } }
+
+    let camera (s : State) = s.camera
 
     let pickPoints (s : State) = s.pickPoints

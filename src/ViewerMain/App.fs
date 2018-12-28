@@ -8,7 +8,19 @@ open Aardvark.Application
 
 open Model
 open Provenance
+open Provenance.Reduced
 open Story
+open View
+
+[<AutoOpen>]
+module private Helpers =
+
+    let restoreFromProvenance (p : Provenance) (model : AppModel) =
+        let s = p.hovered |> Option.defaultValue p.tree
+                          |> ZTree.value
+                          |> Node.state
+
+        s |> State.restore model
 
 [<AutoOpen>]
 module private Events =
@@ -46,33 +58,41 @@ let initial (dir : string) =
     let model = OpcSelectionViewerApp.initial dir in {
         appModel = model
         dockConfig = regularModeConfig
-        provenance = ProvenanceApp.init model
+        provenance = ProvenanceApp.init <| State.create (AppModel.getCamera model) model
         story = StoryApp.init
-        animation = AnimationApp.init model
+        view = ViewApp.init <| AppModel.getViewParams model
         renderControlSize = V2i.One
         directory = dir
     }
 
-let update (model : Model) (act : Action) = 
+let rec update (model : Model) (act : Action) =
     match act with
-        | AnimationAction a ->
-            model |> AnimationApp.update a
+        | ViewAction a ->
+            model |> ViewApp.update a
 
         | ProvenanceAction a ->
             let p = model.provenance |> ProvenanceApp.update model.story a
-            let m = ProvenanceApp.restore model.appModel p
 
-            // TODO: When the user goes to a different provenance state, we deselect
-            // the currently selected slide. If this is useful is not clear at
-            // this point.
-            let updateStory =
-                match a with
-                    | Goto _ -> StoryApp.update DeselectSlide
-                    | _ -> id
+            match a with
+                | Goto _
+                | Undo ->
+                    model |> StoryApp.update DeselectSlide
+                          |> Lens.update Model.Lens.appModel (restoreFromProvenance p)
+                          |> ViewApp.update Move
 
-            model |> updateStory
-                  |> Lens.set Model.Lens.provenance p
-                  |> Lens.set Model.Lens.appModel m
+                | MouseEnter _ ->
+                    model |> Lens.update Model.Lens.appModel (restoreFromProvenance p)
+                          |> ViewApp.update Preview
+
+                | MouseLeave ->
+                    model |> Lens.update Model.Lens.appModel (restoreFromProvenance p)
+                          |> ViewApp.update StopPreview
+
+
+                | _ ->
+                    model
+
+                |> Lens.set Model.Lens.provenance p
         
         | StoryAction a ->
             model |> StoryApp.update a
@@ -82,14 +102,21 @@ let update (model : Model) (act : Action) =
 
         | AppAction a when not (Model.isAnimating model || Model.isPreview model) ->
             let s = OpcSelectionViewerApp.update model.appModel a
-            let p = model.provenance |> ProvenanceApp.update model.story (Update (s, a))
+            let c = model.provenance |> Provenance.state |> State.camera
+
+            let next = State.create c s
+            let current = Provenance.state model.provenance
+            let msg = Message.create current next a
+
+            let p = model.provenance |> ProvenanceApp.update model.story (Update (next, msg))
             
             model |> Lens.set Model.Lens.appModel s
                   |> Lens.set Model.Lens.provenance p
+                  |> ViewApp.update Set
                   |> StoryApp.update UpdateFrame
 
         | KeyDown Keys.Z ->
-            model |> Lens.update Model.Lens.provenance (ProvenanceApp.update model.story Undo)
+            update model <| ProvenanceAction Undo
 
         | KeyDown Keys.R ->
             { model with dockConfig = regularModeConfig }
@@ -125,14 +152,15 @@ let threads (model : Model) =
     let appThreads = model.appModel |> OpcSelectionViewerApp.threads 
                                     |> ThreadPool.map AppAction
 
-    // Thread pool for animations
-    let animationThreads = model |> AnimationApp.threads
+    // Thread pool for view
+    let viewThreads = model |> ViewApp.threads
+                            |> ThreadPool.map ViewAction
 
     // Thread pool for story module                                                 
     let storyThreads = model |> StoryApp.threads
                              |> ThreadPool.map StoryAction
 
-    [appThreads; animationThreads; storyThreads]
+    [appThreads; viewThreads; storyThreads]
         |> ThreadPool.unionMany
 
 
@@ -156,9 +184,11 @@ let controlsView (model : MModel) =
     ]
 
 let provenanceView (model : MModel) =
+    let camera = model.view.state.camera.Current
+
     body [] [
         model.provenance
-            |> ProvenanceApp.view model.story
+            |> ProvenanceApp.view camera model.story
             |> UI.map ProvenanceAction
     ]
 
