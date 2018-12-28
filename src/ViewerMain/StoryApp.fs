@@ -314,12 +314,13 @@ let overlayView (model : MModel) =
             let! selected = model.story.selected
             let! show = model.story.showAnnotations
             let! presentation = model.story.presentation
+            let! preview = model.view.preview |> Mod.map Option.isSome
 
             if selected.IsSome then
                 let! cont = selected.Value.modified.content
 
                 match cont with
-                    | MFrameContent (_, _, a) ->
+                    | MFrameContent (_, _, a) when not preview ->
                         if show || presentation then
                             let viewport = model.renderControlSize
                             let vp = getViewProjTrafoFromModel model
