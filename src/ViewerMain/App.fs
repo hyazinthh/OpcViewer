@@ -22,6 +22,11 @@ module private Helpers =
 
         s |> State.restore model
 
+    let ignoreMessage (a : AppAction) (model : Model) =
+        Model.isAnimating model ||
+        Model.isPreview model ||
+        (model.story.presentation && not (Message.isCamera a))
+
 [<AutoOpen>]
 module private Events =
     let onResize (cb : V2i -> 'msg) =
@@ -100,7 +105,7 @@ let rec update (model : Model) (act : Action) =
         | SessionAction a ->
             model |> SessionApp.update a initial
 
-        | AppAction a when not (Model.isAnimating model || Model.isPreview model) ->
+        | AppAction a when not <| ignoreMessage a model ->
             let s = OpcSelectionViewerApp.update model.appModel a
             let c = model.provenance |> Provenance.state |> State.camera
 

@@ -72,6 +72,10 @@ module Message =
                 else
                     Unknown
 
+    let isCamera : OMessage -> bool = function
+        | OMessage.Camera _ -> true
+        | _ -> false
+
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module State =
     
