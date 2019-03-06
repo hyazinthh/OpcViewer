@@ -46,7 +46,7 @@ module private Helpers =
     module SessionModel =
 
         let create (model : Model) = {
-            appModel = SessionAppModel.create model.appModel
+            appModel = SessionAppModel.create model.inner.current
             dockConfig = model.dockConfig
             provenance = model.provenance
             story = model.story
@@ -55,8 +55,10 @@ module private Helpers =
         }
 
         let restore (current : Model) (model : SessionModel) =
+            let appModel = SessionAppModel.restore current.inner.current model.appModel
+
             let m = {
-                current with appModel = SessionAppModel.restore current.appModel model.appModel
+                current with inner = { current = appModel; preview = None; output = appModel }
                              dockConfig = model.dockConfig
                              provenance = model.provenance
                              story = model.story
@@ -64,7 +66,7 @@ module private Helpers =
                              directory = model.directory
             }
 
-            m |> Lens.set Model.Lens.appModel (State.restore m.appModel <| Provenance.state m.provenance)
+            m |> Lens.set (Model.Lens.inner |. InnerModel.Lens.current) (State.restore m.inner.current <| Provenance.state m.provenance)
 
     // XML serializer
     let private xmlSerializer =

@@ -49,6 +49,7 @@
     <Compile Include="ThumbnailModel.fs" />
     <Compile Include="AnimationModel.fs" />
     <Compile Include="ViewModel.fs" />
+    <Compile Include="PreviewModel.fs" />
     <Compile Include="StoryModel.fs" />
     <Compile Include="Sg.fs" />
     <Compile Include="Opc.fs" />
@@ -59,6 +60,7 @@
     <Compile Include="Model.fs" />
     <Compile Include="AnimationApp.fs" />
     <Compile Include="ViewApp.fs" />
+    <Compile Include="PreviewApp.fs" />
     <Compile Include="SessionApp.fs" />
     <Compile Include="ThumbnailApp.fs" />
     <Compile Include="StoryApp.fs" />

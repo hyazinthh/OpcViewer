@@ -39,7 +39,7 @@ type OState = AppModel
 
 [<DomainType>]
 type State = {
-    camera : CameraView
+    camera : CameraView option
     pickPoints : V3d list
 }
 
@@ -79,12 +79,17 @@ module Message =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module State =
     
-    let create (camera : CameraView) (s : OState) =
+    let create (camera : CameraView option) (s : OState) =
         { camera = camera
           pickPoints = PList.toList s.picking.intersectionPoints }
 
     let restore (current : OState) (s : State) =
-        { current with camera = { current.camera with view = CameraView.restore s.camera }
+        let camera =
+            match s.camera with
+                | None -> current.camera
+                | Some c -> { current.camera with view = CameraView.restore c }
+
+        { current with camera = camera
                        picking = { current.picking with intersectionPoints = PList.ofList s.pickPoints } }
 
     let camera (s : State) = s.camera

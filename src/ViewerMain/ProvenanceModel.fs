@@ -46,7 +46,6 @@ type ProvenanceAction =
     | Update            of State * Message
     | UpdateCamera      of CameraView
     | Goto              of NodeId
-    | Undo
     | SetHighlight      of NodeId
     | RemoveHighlight
     | MouseEnter        of NodeId

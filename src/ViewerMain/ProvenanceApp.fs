@@ -132,7 +132,7 @@ let rec update (story : Story) (msg : ProvenanceAction) (p : Provenance) =
             { p with tree = t }
 
         | UpdateCamera c ->
-            let next = { Provenance.state p with camera = c }
+            let next = { Provenance.state p with camera = Some c }
             let msg = Update (next, Camera c)
 
             p |> update story msg
@@ -141,11 +141,6 @@ let rec update (story : Story) (msg : ProvenanceAction) (p : Provenance) =
             p.tree |> ZTree.root
                    |> ZTree.find (fun n -> n.id = id)
                    |> fun t -> { p with tree = t }
-
-        | Undo ->
-            p.tree |> ZTree.parent
-                   |> Option.map (fun t -> { p with tree = t } )
-                   |> Option.defaultValue p
 
         | MouseEnter id ->
             let t = p.tree |> ZTree.root
@@ -216,7 +211,7 @@ let view (camera : IMod<CameraView>)(s : MStory) (p : MProvenance) =
             let! c = camera
 
             let! modified = p.Current |> Mod.map (fun p ->
-                c <> (p |> Provenance.state |> State.camera)
+                Some c <> (p |> Provenance.state |> State.camera)
             )
 
             yield clazz <| "ui camera icon toggle button" + if modified then "" else " disabled"

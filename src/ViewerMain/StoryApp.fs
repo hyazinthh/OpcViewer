@@ -72,10 +72,10 @@ module private Helpers =
         let restoreContent = function
             | FrameContent (node, view, _) ->
                 let p = model.provenance |> ProvenanceApp.update model.story (Goto node.id)
-                let m = State.restore model.appModel <| Provenance.state p
+                let m = State.restore model.inner.current <| Provenance.state p
 
                 model |> Lens.set Model.Lens.provenance p
-                      |> Lens.set Model.Lens.appModel m
+                      |> Lens.set (Model.Lens.inner |. InnerModel.Lens.current) m
                       |> Model.setViewParams view
                       |> ViewApp.update (if animate then Move else Set)
             | _ -> 
@@ -86,7 +86,7 @@ module private Helpers =
                     |> Option.defaultValue model
 
     let getFrustum (model : MModel) =
-        model.appModel.frustum
+        model.inner.current.frustum
 
     let getCamera (model : MModel) =
         model.view.Current |> Mod.map View.camera
@@ -108,7 +108,7 @@ module private Helpers =
         getViewProjTrafo model.renderControlSize (getFrustum model) (getCamera model)
 
     let getSceneHit (model : MModel) =
-        model.appModel.picking.currentPoint
+        model.inner.current.picking.currentPoint
 
  [<AutoOpen>]
  module private Events =
@@ -180,7 +180,7 @@ let update (msg : StoryAction) (model : Model) =
             model |> Lens.update Model.Lens.story story
 
         | AddFrameSlide before ->
-            let slide = frame model.provenance (Model.getViewParams model)
+            let slide = frame model.provenance model.view.state
             let add = 
                 match before with
                     | None -> Story.append slide
@@ -314,7 +314,7 @@ let overlayView (model : MModel) =
             let! selected = model.story.selected
             let! show = model.story.showAnnotations
             let! presentation = model.story.presentation
-            let! preview = model.view.preview |> Mod.map Option.isSome
+            let! preview = model.inner.preview |> Mod.map Option.isSome
 
             if selected.IsSome then
                 let! cont = selected.Value.modified.content

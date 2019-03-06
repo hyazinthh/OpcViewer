@@ -11,11 +11,12 @@ open Provenance
 open Provenance.Reduced
 open Story
 open View
+open Preview
 
 [<AutoOpen>]
 module private Helpers =
 
-    let restoreFromProvenance (p : Provenance) (model : AppModel) =
+    let getModelFromHovered (p : Provenance) (model : AppModel) =
         let s = p.hovered |> Option.defaultValue p.tree
                           |> ZTree.value
                           |> Node.state
@@ -61,9 +62,9 @@ let presentationModeConfig =
 
 let initial (dir : string) =
     let model = OpcSelectionViewerApp.initial dir in {
-        appModel = model
+        inner = { current = model; preview = None; output = model }
         dockConfig = regularModeConfig
-        provenance = ProvenanceApp.init <| State.create (AppModel.getCamera model) model
+        provenance = ProvenanceApp.init <| State.create None model
         story = StoryApp.init
         view = ViewApp.init <| AppModel.getViewParams model
         renderControlSize = V2i.One
@@ -71,91 +72,103 @@ let initial (dir : string) =
     }
 
 let rec update (model : Model) (act : Action) =
-    match act with
-        | ViewAction a ->
-            model |> ViewApp.update a
 
-        | ProvenanceAction a ->
-            let p = model.provenance |> ProvenanceApp.update model.story a
+    let next =
+        match act with
+            | ViewAction a ->
+                model |> ViewApp.update a
 
-            match a with
-                | Goto _
-                | Undo ->
-                    model |> StoryApp.update DeselectSlide
-                          |> Lens.update Model.Lens.appModel (restoreFromProvenance p)
-                          |> ViewApp.update Move
+            | ProvenanceAction a ->
+                let p = model.provenance |> ProvenanceApp.update model.story a
+                let previewCamera = p.hovered |> Option.bind (fun h -> h |> ZTree.value |> Node.state |> State.camera)
+                                              |> Option.isSome
 
-                | MouseEnter _ ->
-                    model |> Lens.update Model.Lens.appModel (restoreFromProvenance p)
-                          |> ViewApp.update Preview
+                match a with
+                    | Goto _ ->
+                        let m = p |> Provenance.state |> State.restore model.inner.current
 
-                | MouseLeave ->
-                    model |> Lens.update Model.Lens.appModel (restoreFromProvenance p)
-                          |> ViewApp.update StopPreview
+                        model |> StoryApp.update DeselectSlide
+                              |> Lens.set (Model.Lens.inner |. InnerModel.Lens.current) m
+                              |> ViewApp.update Move
 
+                    | MouseEnter _ ->
+                        let m = model.inner.current |> getModelFromHovered p
+                        let preview = m |> if previewCamera then Preview.full else Preview.model
 
-                | _ ->
-                    model
+                        model |> PreviewApp.update (Start preview)
 
-                |> Lens.set Model.Lens.provenance p
+                    | MouseLeave ->
+                        model |> PreviewApp.update Stop
+
+                    | _ ->
+                        model
+
+                    |> Lens.set Model.Lens.provenance p
         
-        | StoryAction a ->
-            model |> StoryApp.update a
+            | StoryAction a ->
+                model |> StoryApp.update a
 
-        | SessionAction a ->
-            model |> SessionApp.update a initial
+            | SessionAction a ->
+                model |> SessionApp.update a initial
 
-        | AppAction a when not <| ignoreMessage a model ->
-            let s = OpcSelectionViewerApp.update model.appModel a
-            let c = model.provenance |> Provenance.state |> State.camera
+            | AppAction a when not <| ignoreMessage a model ->
+                let s = OpcSelectionViewerApp.update model.inner.current a
 
-            let next = State.create c s
-            let current = Provenance.state model.provenance
-            let msg = Message.create current next a
+                let next = State.create None s
+                let current = Provenance.state model.provenance
+                let msg = Message.create current next a
 
-            let p = model.provenance |> ProvenanceApp.update model.story (Update (next, msg))
+                let p = model.provenance |> ProvenanceApp.update model.story (Update (next, msg))
             
-            model |> Lens.set Model.Lens.appModel s
-                  |> Lens.set Model.Lens.provenance p
-                  |> ViewApp.update Set
-                  |> StoryApp.update UpdateFrame
+                model |> Lens.set (Model.Lens.inner |. InnerModel.Lens.current) s
+                      |> Lens.set Model.Lens.provenance p
+                      |> ViewApp.update Set
+                      |> StoryApp.update UpdateFrame
 
-        | KeyDown Keys.Z ->
-            update model <| ProvenanceAction Undo
+            | KeyDown Keys.R ->
+                { model with dockConfig = regularModeConfig }
 
-        | KeyDown Keys.R ->
-            { model with dockConfig = regularModeConfig }
+            | KeyDown Keys.P when Story.length model.story > 0 ->
+                { model with dockConfig = presentationModeConfig }
+                    |> StoryApp.update StartPresentation
 
-        | KeyDown Keys.P when Story.length model.story > 0 ->
-            { model with dockConfig = presentationModeConfig }
-                |> StoryApp.update StartPresentation
+            | KeyDown Keys.Escape ->
+                { model with dockConfig = regularModeConfig }
+                    |> StoryApp.update EndPresentation
 
-        | KeyDown Keys.Escape ->
-            { model with dockConfig = regularModeConfig }
-                |> StoryApp.update EndPresentation
+            | KeyDown Keys.Right
+            | KeyDown Keys.Enter ->
+                model |> StoryApp.update Forward
 
-        | KeyDown Keys.Right 
-        | KeyDown Keys.Enter ->
-            model |> StoryApp.update Forward
+            | KeyDown Keys.Left
+            | KeyDown Keys.Back ->
+                model |> StoryApp.update Backward
 
-        | KeyDown Keys.Left
-        | KeyDown Keys.Back ->
-            model |> StoryApp.update Backward
+            | RenderControlResized s ->
+                { model with renderControlSize = s }
 
-        | RenderControlResized s ->
-            { model with renderControlSize = s }
+            | UpdateConfig cfg ->
+                { model with dockConfig = cfg }
 
-        | UpdateConfig cfg ->
-            { model with dockConfig = cfg }
+            | _ ->
+                model
 
-        | _ -> 
-            model
+    // Copy the correct application model to the
+    // output field; this is either the current state or a preview
+    let outputModel =
+        let view = next |> Model.getActiveModel View 
+                        |> AppModel.getViewParams
+
+        next |> Model.getActiveModel Model
+             |> AppModel.setViewParams view
+
+    next |> Lens.set (Model.Lens.inner |. InnerModel.Lens.output) outputModel
 
 let threads (model : Model) =
     
     // Thread pool for actual application
-    let appThreads = model.appModel |> OpcSelectionViewerApp.threads 
-                                    |> ThreadPool.map AppAction
+    let appThreads = model.inner.current |> OpcSelectionViewerApp.threads
+                                         |> ThreadPool.map AppAction
 
     // Thread pool for view
     let viewThreads = model |> ViewApp.threads
@@ -172,7 +185,7 @@ let threads (model : Model) =
 let renderView (model : MModel) =
     onBoot "$(document).trigger('resize')" (
         body [ onResize RenderControlResized; onKeyDown KeyDown; onKeyUp KeyUp ] [
-            model.appModel
+            model.inner.output
                 |> OpcSelectionViewerApp.renderView
                 |> UI.map AppAction
 
@@ -183,7 +196,7 @@ let renderView (model : MModel) =
 
 let controlsView (model : MModel) =
     body [style "background-color:#1B1C1E"] [
-        model.appModel
+        model.inner.output
             |> OpcSelectionViewerApp.controlsView
             |> UI.map AppAction
     ]
@@ -211,7 +224,7 @@ let presentationView (model : MModel) =
     require (dependencies) (
         body [clazz "ui"] [
             Html.SemUi.accordion "Rendering" "options" true [
-                model.appModel |> OpcSelectionViewerApp.renderingControlsView |> UI.map AppAction
+                model.inner.output |> OpcSelectionViewerApp.renderingControlsView |> UI.map AppAction
             ]
         ]
     )

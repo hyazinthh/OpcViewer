@@ -11,6 +11,7 @@ open Provenance.Reduced
 open Story
 open Session
 open View
+open Preview
 open Animation
 
 type Action =
@@ -21,13 +22,21 @@ type Action =
     | UpdateConfig          of DockConfig
     | NodeClick             of NodeId
     | ViewAction            of ViewAction
+    | PreviewAction         of PreviewAction
     | KeyDown               of Keys
     | KeyUp                 of Keys
     | RenderControlResized  of V2i
 
 [<DomainType>]
+type InnerModel = {
+    current : AppModel          // The current state of the inner application
+    preview : Preview option    // A preview or temporary state
+    output : AppModel           // The state that is displayed (may be a preview)
+}
+
+[<DomainType>]
 type Model = {
-    appModel : AppModel
+    inner : InnerModel
     view : View
     dockConfig : DockConfig
     provenance : Provenance
@@ -65,35 +74,103 @@ module AppModel =
         { camera = model |> getCamera
           presentation = model |> getPresentation }
 
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module InnerModel =
+
+    // Gets the active encapsulated model according to the given mode.
+    // E.g. when a preview of a camera position is ongoing, the preview model is returned
+    // when calling this function for mode = View
+    let getActiveModel (mode : Mode) (model : InnerModel) =
+        model.preview |> Option.filter (Preview.is mode)
+                      |> Option.map (fun p -> p.model)
+                      |> Option.defaultValue model.current
+
+    let setCamera (camera : CameraView) (model : InnerModel) =
+        { model with current = model.current |> AppModel.setCamera camera }
+
+    let getCamera (model : InnerModel) =
+        model.current |> AppModel.getCamera
+
+    let setRendering (rendering  : RenderingParams) (model : InnerModel) =
+        { model with current = model.current |> AppModel.setRendering rendering }
+
+    let getRendering (model : InnerModel) =
+        model.current |> AppModel.getRendering
+
+    let setPresentation (presentation : PresentationParams) (model : InnerModel) =
+        { model with current = model.current |> AppModel.setPresentation presentation }
+
+    let getPresentation (model : InnerModel) =
+        model.current |> AppModel.getPresentation
+
+    let setViewParams (view : ViewParams) (model : InnerModel) =
+        { model with current = model.current |> AppModel.setViewParams view }
+
+    let setActiveViewParams (view : ViewParams) (model : InnerModel) =
+        match model.preview with
+            | Some p when p |> Preview.is View ->
+                { model with preview = Some { p with model = p.model |> AppModel.setViewParams view } }
+            | _ ->
+                { model with current = model.current |> AppModel.setViewParams view }
+
+    let getViewParams (model : InnerModel) =
+        model.current |> AppModel.getViewParams
+
+    let getActiveViewParams (model : InnerModel) =
+        model.preview |> Option.filter (Preview.is View)
+                      |> Option.map (fun p -> p.model)
+                      |> Option.defaultValue model.current
+                      |> AppModel.getViewParams
+
+    let getActivePresentation (model : InnerModel) =
+        model |> getActiveViewParams
+              |> fun v -> v.presentation
+
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Model =
 
+    let getActiveModel (mode : Mode) (model : Model) =
+        model.inner |> InnerModel.getActiveModel mode
+
     let setCamera (camera : CameraView) (model : Model) =
-        { model with appModel = model.appModel |> AppModel.setCamera camera }
+        { model with inner = model.inner |> InnerModel.setCamera camera }
 
     let getCamera (model : Model) =
-        model.appModel |> AppModel.getCamera
+        model.inner |> InnerModel.getCamera
 
     let setRendering (rendering  : RenderingParams) (model : Model) =
-        { model with appModel = model.appModel |> AppModel.setRendering rendering }
+        { model with inner = model.inner |> InnerModel.setRendering rendering }
 
     let getRendering (model : Model) =
-        model.appModel |> AppModel.getRendering
+        model.inner |> InnerModel.getRendering
 
     let setPresentation (presentation : PresentationParams) (model : Model) =
-        { model with appModel = model.appModel |> AppModel.setPresentation presentation }
+        { model with inner = model.inner |> InnerModel.setPresentation presentation }
 
     let getPresentation (model : Model) =
-        model.appModel |> AppModel.getPresentation
+        model.inner |> InnerModel.getPresentation
+
+    let getActivePresentation (model : Model) =
+        model.inner |> InnerModel.getActivePresentation
 
     let setViewParams (view : ViewParams) (model : Model) =
-        { model with appModel = model.appModel |> AppModel.setViewParams view }
+        { model with inner = model.inner |> InnerModel.setViewParams view }
+
+    let setActiveViewParams (view : ViewParams) (model : Model) =
+        { model with inner = model.inner |> InnerModel.setActiveViewParams view }
 
     let getViewParams (model : Model) =
-        model.appModel |> AppModel.getViewParams
+        model.inner |> InnerModel.getViewParams
+
+    let getActiveViewParams (model : Model) =
+        model.inner |> InnerModel.getActiveViewParams
 
     let isAnimating (model : Model) =
         model.view.animation |> Animation.isAnimating
 
     let isPreview (model : Model) =
-        model.view.preview |> Option.isSome
+        model.inner.preview |> Option.isSome
+
+    let isPreviewMode (mode : Mode) (model : Model) =
+        model.inner.preview |> Option.exists (Preview.is mode)
